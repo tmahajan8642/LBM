@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  RENTER
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(RENTER)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  renter    Renter?
+
+  @@map("users")
+}
+
+model Renter {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  meterNumber String   @map("meter_number")
+  address     String
+  mobile      String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bills       Bill[]
+
+  @@map("renters")
+}
+
+model Bill {
+  id               String     @id @default(cuid())
+  renterId         String     @map("renter_id")
+  month            Int
+  year             Int
+  previousReading  Float      @map("previous_reading")
+  currentReading   Float      @map("current_reading")
+  units            Float
+  ratePerUnit      Float      @map("rate_per_unit")
+  fixedCharge      Float      @map("fixed_charge")
+  totalAmount      Float      @map("total_amount")
+  status           BillStatus @default(PENDING)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  renter           Renter     @relation(fields: [renterId], references: [id], onDelete: Cascade)
+
+  @@unique([renterId, month, year])
+  @@map("bills")
+}
