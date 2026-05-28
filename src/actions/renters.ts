@@ -6,17 +6,27 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { renterSchema } from "@/lib/validations";
 
-async function requireAdmin() {
+async function requirePropertyOwner() {
   const session = await auth();
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!session?.user || session.user.role !== "PROPERTY_OWNER") {
     throw new Error("Unauthorized");
   }
   return session;
 }
 
 export async function getRenters() {
-  await requireAdmin();
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const where =
+    session.user.role === "PROPERTY_OWNER"
+      ? { propertyOwnerId: session.user.propertyOwnerId ?? "__none__" }
+      : session.user.role === "ADMIN"
+        ? {}
+        : { id: "__none__" };
+
   return prisma.renter.findMany({
+    where,
     include: {
       user: { select: { id: true, name: true, email: true } },
       _count: { select: { bills: true } },
@@ -26,9 +36,14 @@ export async function getRenters() {
 }
 
 export async function getRenterById(id: string) {
-  await requireAdmin();
-  return prisma.renter.findUnique({
-    where: { id },
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  return prisma.renter.findFirst({
+    where:
+      session.user.role === "PROPERTY_OWNER"
+        ? { id, propertyOwnerId: session.user.propertyOwnerId ?? "__none__" }
+        : { id },
     include: {
       user: { select: { id: true, name: true, email: true } },
       bills: { orderBy: [{ year: "desc" }, { month: "desc" }], take: 12 },
@@ -37,13 +52,13 @@ export async function getRenterById(id: string) {
 }
 
 export async function createRenter(data: unknown) {
-  await requireAdmin();
+  const session = await requirePropertyOwner();
   const parsed = renterSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid data" };
   }
 
-  const { name, email, password, meterNumber, address, mobile } = parsed.data;
+  const { name, email, password, meterNumber, roomNumber, address, mobile } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -58,7 +73,15 @@ export async function createRenter(data: unknown) {
       email,
       password: hashedPassword,
       role: "RENTER",
-      renter: { create: { meterNumber, address, mobile } },
+      renter: {
+        create: {
+          meterNumber,
+          roomNumber,
+          address,
+          mobile,
+          propertyOwnerId: session.user.propertyOwnerId ?? undefined,
+        },
+      },
     },
   });
 
@@ -68,7 +91,7 @@ export async function createRenter(data: unknown) {
 }
 
 export async function updateRenter(id: string, data: unknown) {
-  await requireAdmin();
+  const session = await requirePropertyOwner();
   const parsed = renterSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid data" };
@@ -78,9 +101,11 @@ export async function updateRenter(id: string, data: unknown) {
     where: { id },
     include: { user: true },
   });
-  if (!renter) return { success: false, error: "Renter not found" };
+  if (!renter || renter.propertyOwnerId !== session.user.propertyOwnerId) {
+    return { success: false, error: "Renter not found" };
+  }
 
-  const { name, email, password, meterNumber, address, mobile } = parsed.data;
+  const { name, email, password, meterNumber, roomNumber, address, mobile } = parsed.data;
 
   const updateData: { name: string; email: string; password?: string } = { name, email };
   if (password) {
@@ -94,7 +119,7 @@ export async function updateRenter(id: string, data: unknown) {
 
   await prisma.renter.update({
     where: { id },
-    data: { meterNumber, address, mobile },
+    data: { meterNumber, roomNumber, address, mobile },
   });
 
   revalidatePath("/admin/renters");
@@ -102,9 +127,11 @@ export async function updateRenter(id: string, data: unknown) {
 }
 
 export async function deleteRenter(id: string) {
-  await requireAdmin();
+  const session = await requirePropertyOwner();
   const renter = await prisma.renter.findUnique({ where: { id } });
-  if (!renter) return { success: false, error: "Renter not found" };
+  if (!renter || renter.propertyOwnerId !== session.user.propertyOwnerId) {
+    return { success: false, error: "Renter not found" };
+  }
 
   await prisma.user.delete({ where: { id: renter.userId } });
   revalidatePath("/admin/renters");
@@ -113,8 +140,15 @@ export async function deleteRenter(id: string) {
 }
 
 export async function getRentersForSelect() {
-  await requireAdmin();
+  const session = await auth();
+  if (!session?.user || !["ADMIN", "PROPERTY_OWNER"].includes(session.user.role)) {
+    throw new Error("Unauthorized");
+  }
   return prisma.renter.findMany({
+    where:
+      session.user.role === "PROPERTY_OWNER"
+        ? { propertyOwnerId: session.user.propertyOwnerId ?? "__none__" }
+        : undefined,
     include: { user: { select: { name: true } } },
     orderBy: { user: { name: "asc" } },
   });

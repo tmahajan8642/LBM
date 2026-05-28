@@ -3,6 +3,8 @@ import { BillsPageClient } from "./bills-client";
 import { getBills } from "@/actions/bills";
 import { getRentersForSelect } from "@/actions/renters";
 import type { BillStatus } from "@prisma/client";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 interface PageProps {
   searchParams: Promise<{
@@ -15,6 +17,11 @@ interface PageProps {
 }
 
 export default async function AdminBillsPage({ searchParams }: PageProps) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "PROPERTY_OWNER") {
+    redirect("/admin/dashboard");
+  }
+
   const params = await searchParams;
   const page = Number(params.page) || 1;
 

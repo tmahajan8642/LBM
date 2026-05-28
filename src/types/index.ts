@@ -6,7 +6,7 @@ export type UserWithRenter = User & {
   renter: Renter | null;
 };
 
-export type BillWithRenter = Bill & {
+export type BillWithRenter = (Bill & { roomRent?: number }) & {
   renter: Renter & {
     user: Pick<User, "id" | "name" | "email">;
   };

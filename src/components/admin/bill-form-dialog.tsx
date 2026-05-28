@@ -70,6 +70,7 @@ export function BillFormDialog({
           currentReading: bill.currentReading,
           ratePerUnit: bill.ratePerUnit,
           fixedCharge: bill.fixedCharge,
+          roomRent: bill.roomRent ?? 0,
           status: bill.status,
         }
       : {
@@ -80,6 +81,7 @@ export function BillFormDialog({
           currentReading: 0,
           ratePerUnit: 8.5,
           fixedCharge: 150,
+          roomRent: 0,
           status: "PENDING",
         },
   });
@@ -89,7 +91,8 @@ export function BillFormDialog({
     Number(watched.previousReading) || 0,
     Number(watched.currentReading) || 0,
     Number(watched.ratePerUnit) || 0,
-    Number(watched.fixedCharge) || 0
+    Number(watched.fixedCharge) || 0,
+    Number(watched.roomRent) || 0
   );
 
   useEffect(() => {
@@ -98,6 +101,37 @@ export function BillFormDialog({
       setValue("previousReading", reading);
     });
   }, [watched.renterId, isEdit, setValue]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (bill) {
+      reset({
+        renterId: bill.renterId,
+        month: bill.month,
+        year: bill.year,
+        previousReading: bill.previousReading,
+        currentReading: bill.currentReading,
+        ratePerUnit: bill.ratePerUnit,
+        fixedCharge: bill.fixedCharge,
+        roomRent: bill.roomRent ?? 0,
+        status: bill.status,
+      });
+      return;
+    }
+
+    reset({
+      renterId: "",
+      month: new Date().getMonth() + 1,
+      year: new Date().getFullYear(),
+      previousReading: 0,
+      currentReading: 0,
+      ratePerUnit: 8.5,
+      fixedCharge: 150,
+      roomRent: 0,
+      status: "PENDING",
+    });
+  }, [open, bill, reset]);
 
   const onSubmit = async (data: BillInput) => {
     setLoading(true);
@@ -223,7 +257,7 @@ export function BillFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="ratePerUnit">{t("admin.bills.ratePerUnit")}</Label>
               <Input
@@ -240,6 +274,15 @@ export function BillFormDialog({
                 type="number"
                 step="0.01"
                 {...register("fixedCharge", { valueAsNumber: true })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="roomRent">Room Rent (₹)</Label>
+              <Input
+                id="roomRent"
+                type="number"
+                step="0.01"
+                {...register("roomRent", { valueAsNumber: true })}
               />
             </div>
           </div>
@@ -272,7 +315,7 @@ export function BillFormDialog({
               {formatCurrency(preview.totalAmount)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {t("admin.bills.calcPreview")}
+              Formula: (Units x Rate) + Fixed Charge + Room Rent
             </p>
           </div>
 

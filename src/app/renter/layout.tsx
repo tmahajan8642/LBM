@@ -16,7 +16,7 @@ export default async function RenterLayout({
     <div className="flex min-h-screen">
       <DashboardSidebar role="RENTER" />
       <main className="flex-1 overflow-auto">
-        <div className="container mx-auto p-4 md:p-6 lg:p-8">{children}</div>
+        <div className="w-full px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">{children}</div>
       </main>
     </div>
   );

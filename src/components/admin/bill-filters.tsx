@@ -30,8 +30,8 @@ export function BillFilters() {
   };
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="relative flex-1">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="relative md:col-span-2 xl:col-span-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder={t("admin.bills.searchPlaceholder")}
@@ -47,7 +47,7 @@ export function BillFilters() {
         value={searchParams.get("year") ?? "all"}
         onValueChange={(v) => updateParam("year", v)}
       >
-        <SelectTrigger className="w-full sm:w-[120px]">
+        <SelectTrigger className="w-full">
           <SelectValue placeholder={t("admin.bills.year")} />
         </SelectTrigger>
         <SelectContent>
@@ -63,7 +63,7 @@ export function BillFilters() {
         value={searchParams.get("month") ?? "all"}
         onValueChange={(v) => updateParam("month", v)}
       >
-        <SelectTrigger className="w-full sm:w-[140px]">
+        <SelectTrigger className="w-full">
           <SelectValue placeholder={t("admin.bills.month")} />
         </SelectTrigger>
         <SelectContent>
@@ -79,7 +79,7 @@ export function BillFilters() {
         value={searchParams.get("status") ?? "all"}
         onValueChange={(v) => updateParam("status", v)}
       >
-        <SelectTrigger className="w-full sm:w-[130px]">
+        <SelectTrigger className="w-full">
           <SelectValue placeholder={t("admin.bills.status")} />
         </SelectTrigger>
         <SelectContent>

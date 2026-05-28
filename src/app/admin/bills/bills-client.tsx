@@ -8,6 +8,7 @@ import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { BillFilters } from "@/components/admin/bill-filters";
 import { BillsTable } from "@/components/admin/bills-table";
 import { BillFormDialog } from "@/components/admin/bill-form-dialog";
+import { RenterBillsModal } from "@/components/admin/renter-bills-modal";
 import { Pagination } from "@/components/shared/pagination";
 import { useTranslations } from "@/components/providers/locale-provider";
 import type { BillWithRenter } from "@/types";
@@ -36,6 +37,8 @@ export function BillsPageClient({
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<BillWithRenter | null>(null);
+  const [renterModalOpen, setRenterModalOpen] = useState(false);
+  const [selectedRenterId, setSelectedRenterId] = useState<string | null>(null);
   const { t } = useTranslations();
 
   return (
@@ -49,6 +52,7 @@ export function BillsPageClient({
         }
       >
         <Button
+          className="w-full sm:w-auto"
           onClick={() => {
             setEditingBill(null);
             setDialogOpen(true);
@@ -65,6 +69,10 @@ export function BillsPageClient({
 
       <BillsTable
         bills={bills}
+        onRenterClick={(bill) => {
+          setSelectedRenterId(bill.renterId);
+          setRenterModalOpen(true);
+        }}
         onEdit={(bill) => {
           setEditingBill(bill);
           setDialogOpen(true);
@@ -81,6 +89,12 @@ export function BillsPageClient({
         bill={editingBill}
         renters={renters}
         onSuccess={() => router.refresh()}
+      />
+
+      <RenterBillsModal
+        open={renterModalOpen}
+        onOpenChange={setRenterModalOpen}
+        renterId={selectedRenterId}
       />
     </div>
   );

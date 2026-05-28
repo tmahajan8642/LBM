@@ -66,12 +66,14 @@ export function RentersPageClient({ renters }: RentersPageClientProps) {
       </DashboardHeader>
 
       <div className="rounded-lg border">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>{t("admin.renters.name")}</TableHead>
               <TableHead>{t("admin.renters.email")}</TableHead>
               <TableHead>{t("admin.renters.meterNumber")}</TableHead>
+              <TableHead>Room No</TableHead>
               <TableHead>{t("admin.renters.mobile")}</TableHead>
               <TableHead>{t("admin.renters.bills")}</TableHead>
               <TableHead className="text-right">{t("common.actions")}</TableHead>
@@ -80,7 +82,7 @@ export function RentersPageClient({ renters }: RentersPageClientProps) {
           <TableBody>
             {renters.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   {t("admin.renters.noRenters")}
                 </TableCell>
               </TableRow>
@@ -90,6 +92,7 @@ export function RentersPageClient({ renters }: RentersPageClientProps) {
                   <TableCell className="font-medium">{renter.user.name}</TableCell>
                   <TableCell>{renter.user.email}</TableCell>
                   <TableCell>{renter.meterNumber}</TableCell>
+                  <TableCell>{renter.roomNumber || "-"}</TableCell>
                   <TableCell>{renter.mobile}</TableCell>
                   <TableCell>{renter._count?.bills ?? 0}</TableCell>
                   <TableCell className="text-right">
@@ -119,6 +122,7 @@ export function RentersPageClient({ renters }: RentersPageClientProps) {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <RenterFormDialog

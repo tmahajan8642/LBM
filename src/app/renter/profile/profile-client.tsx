@@ -78,9 +78,15 @@ export function ProfilePageClient({ user }: ProfilePageClientProps) {
               <p className="text-xs text-muted-foreground">{t("renter.profile.emailHint")}</p>
             </div>
             {user.renter && (
-              <div className="space-y-2">
-                <Label>{t("renter.profile.meterNumber")}</Label>
-                <Input value={user.renter.meterNumber} disabled />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t("renter.profile.meterNumber")}</Label>
+                  <Input value={user.renter.meterNumber} disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label>Room Number</Label>
+                  <Input value={user.renter.roomNumber} disabled />
+                </div>
               </div>
             )}
             <div className="space-y-2">

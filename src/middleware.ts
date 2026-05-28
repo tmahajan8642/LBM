@@ -14,6 +14,9 @@ export default auth((req) => {
     if (role === "ADMIN") {
       return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
     }
+    if (role === "PROPERTY_OWNER") {
+      return NextResponse.redirect(new URL("/admin/renters", nextUrl));
+    }
     return NextResponse.redirect(new URL("/renter/bills", nextUrl));
   }
 
@@ -21,8 +24,21 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", nextUrl));
   }
 
-  if (isAdminRoute && role !== "ADMIN") {
+  if (isAdminRoute && !["ADMIN", "PROPERTY_OWNER"].includes(role ?? "")) {
     return NextResponse.redirect(new URL("/renter/bills", nextUrl));
+  }
+
+  if (role === "ADMIN" && ["/admin/renters", "/admin/bills", "/admin/settings"].some((path) => nextUrl.pathname.startsWith(path))) {
+    return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
+  }
+
+  if (
+    role === "PROPERTY_OWNER" &&
+    ["/admin/dashboard", "/admin/reports", "/admin/property-owners"].some((path) =>
+      nextUrl.pathname.startsWith(path)
+    )
+  ) {
+    return NextResponse.redirect(new URL("/admin/renters", nextUrl));
   }
 
   if (isRenterRoute && role !== "RENTER") {

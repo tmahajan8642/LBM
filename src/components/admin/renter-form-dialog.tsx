@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { renterSchema, type RenterInput } from "@/lib/validations";
+import { Eye, EyeOff } from "lucide-react";
 import { createRenter, updateRenter } from "@/actions/renters";
 import { useTranslations } from "@/components/providers/locale-provider";
 import type { RenterWithUser } from "@/types";
@@ -33,6 +34,7 @@ export function RenterFormDialog({
   onSuccess,
 }: RenterFormDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { t } = useTranslations();
   const isEdit = !!renter;
 
@@ -49,6 +51,7 @@ export function RenterFormDialog({
           email: renter.user.email,
           password: "",
           meterNumber: renter.meterNumber,
+          roomNumber: renter.roomNumber,
           address: renter.address,
           mobile: renter.mobile,
         }
@@ -57,6 +60,7 @@ export function RenterFormDialog({
           email: "",
           password: "",
           meterNumber: "",
+          roomNumber: "",
           address: "",
           mobile: "",
         },
@@ -83,6 +87,33 @@ export function RenterFormDialog({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (renter) {
+      reset({
+        name: renter.user.name,
+        email: renter.user.email,
+        password: "",
+        meterNumber: renter.meterNumber,
+        roomNumber: renter.roomNumber,
+        address: renter.address,
+        mobile: renter.mobile,
+      });
+      return;
+    }
+
+    reset({
+      name: "",
+      email: "",
+      password: "",
+      meterNumber: "",
+      roomNumber: "",
+      address: "",
+      mobile: "",
+    });
+  }, [open, renter, reset]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -112,7 +143,22 @@ export function RenterFormDialog({
               {t("admin.renters.password")}{" "}
               {isEdit && t("admin.renters.passwordHint")}
             </Label>
-            <Input id="password" type="password" {...register("password")} />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                className="pr-10"
+                {...register("password")}
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {errors.password && (
               <p className="text-sm text-destructive">{errors.password.message}</p>
             )}
@@ -122,6 +168,13 @@ export function RenterFormDialog({
             <Input id="meterNumber" {...register("meterNumber")} />
             {errors.meterNumber && (
               <p className="text-sm text-destructive">{errors.meterNumber.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="roomNumber">Room Number</Label>
+            <Input id="roomNumber" {...register("roomNumber")} />
+            {errors.roomNumber && (
+              <p className="text-sm text-destructive">{errors.roomNumber.message}</p>
             )}
           </div>
           <div className="space-y-2">

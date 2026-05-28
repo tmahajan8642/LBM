@@ -13,7 +13,7 @@ export function DashboardHeader({ title, description, children }: DashboardHeade
           <p className="text-sm text-muted-foreground">{description}</p>
         )}
       </div>
-      {children && <div className="flex items-center gap-2">{children}</div>}
+      {children && <div className="flex w-full items-center gap-2 sm:w-auto">{children}</div>}
     </div>
   );
 }

@@ -16,6 +16,14 @@ async function requireAdmin() {
   return session;
 }
 
+async function requirePropertyOwner() {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "PROPERTY_OWNER") {
+    throw new Error("Unauthorized");
+  }
+  return session;
+}
+
 async function requireRenter() {
   const session = await auth();
   if (!session?.user || session.user.role !== "RENTER") {
@@ -32,9 +40,15 @@ export async function getBills(filters: BillFilters = {}) {
   const skip = (page - 1) * limit;
 
   const where: Prisma.BillWhereInput = {};
+  const andConditions: Prisma.BillWhereInput[] = [];
 
   if (session.user.role === "RENTER" && session.user.renterId) {
     where.renterId = session.user.renterId;
+  }
+  if (session.user.role === "PROPERTY_OWNER") {
+    andConditions.push({
+      renter: { is: { propertyOwnerId: session.user.propertyOwnerId ?? "__none__" } },
+    });
   }
 
   if (year) where.year = year;
@@ -42,13 +56,21 @@ export async function getBills(filters: BillFilters = {}) {
   if (status) where.status = status;
 
   if (search) {
-    where.renter = {
-      OR: [
-        { user: { name: { contains: search, mode: "insensitive" } } },
-        { user: { email: { contains: search, mode: "insensitive" } } },
-        { meterNumber: { contains: search, mode: "insensitive" } },
-      ],
-    };
+    andConditions.push({
+      renter: {
+        is: {
+          OR: [
+            { user: { name: { contains: search, mode: "insensitive" } } },
+            { user: { email: { contains: search, mode: "insensitive" } } },
+            { meterNumber: { contains: search, mode: "insensitive" } },
+          ],
+        },
+      },
+    });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
   }
 
   const [bills, total] = await Promise.all([
@@ -90,12 +112,18 @@ export async function getBillById(id: string) {
   ) {
     throw new Error("Unauthorized");
   }
+  if (
+    session.user.role === "PROPERTY_OWNER" &&
+    bill.renter.propertyOwnerId !== session.user.propertyOwnerId
+  ) {
+    throw new Error("Unauthorized");
+  }
 
   return bill;
 }
 
 export async function createBill(data: unknown) {
-  await requireAdmin();
+  const session = await requirePropertyOwner();
   const parsed = billSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid data" };
@@ -109,8 +137,20 @@ export async function createBill(data: unknown) {
     currentReading,
     ratePerUnit,
     fixedCharge,
+    roomRent,
     status,
   } = parsed.data;
+
+  const renter = await prisma.renter.findFirst({
+    where: {
+      id: renterId,
+      propertyOwnerId: session.user.propertyOwnerId ?? "__none__",
+    },
+    select: { id: true },
+  });
+  if (!renter) {
+    return { success: false, error: "Unauthorized renter access" };
+  }
 
   const existing = await prisma.bill.findUnique({
     where: { renterId_month_year: { renterId, month, year } },
@@ -123,7 +163,8 @@ export async function createBill(data: unknown) {
     previousReading,
     currentReading,
     ratePerUnit,
-    fixedCharge
+    fixedCharge,
+    roomRent
   );
 
   await prisma.bill.create({
@@ -148,7 +189,7 @@ export async function createBill(data: unknown) {
 }
 
 export async function updateBill(id: string, data: unknown) {
-  await requireAdmin();
+  const session = await requirePropertyOwner();
   const parsed = billSchema.safeParse(data);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid data" };
@@ -162,14 +203,35 @@ export async function updateBill(id: string, data: unknown) {
     currentReading,
     ratePerUnit,
     fixedCharge,
+    roomRent,
     status,
   } = parsed.data;
+
+  const existingBill = await prisma.bill.findUnique({
+    where: { id },
+    include: { renter: { select: { propertyOwnerId: true } } },
+  });
+  if (!existingBill || existingBill.renter.propertyOwnerId !== session.user.propertyOwnerId) {
+    return { success: false, error: "Bill not found" };
+  }
+
+  const renter = await prisma.renter.findFirst({
+    where: {
+      id: renterId,
+      propertyOwnerId: session.user.propertyOwnerId ?? "__none__",
+    },
+    select: { id: true },
+  });
+  if (!renter) {
+    return { success: false, error: "Unauthorized renter access" };
+  }
 
   const { units, totalAmount } = calculateBillAmount(
     previousReading,
     currentReading,
     ratePerUnit,
-    fixedCharge
+    fixedCharge,
+    roomRent
   );
 
   await prisma.bill.update({
@@ -194,7 +256,15 @@ export async function updateBill(id: string, data: unknown) {
 }
 
 export async function deleteBill(id: string) {
-  await requireAdmin();
+  const session = await requirePropertyOwner();
+  const bill = await prisma.bill.findUnique({
+    where: { id },
+    include: { renter: { select: { propertyOwnerId: true } } },
+  });
+  if (!bill || bill.renter.propertyOwnerId !== session.user.propertyOwnerId) {
+    return { success: false, error: "Bill not found" };
+  }
+
   await prisma.bill.delete({ where: { id } });
   revalidatePath("/admin/bills");
   revalidatePath("/admin/dashboard");
@@ -268,9 +338,12 @@ export async function getRenterDashboardStats() {
 }
 
 export async function getLastReading(renterId: string) {
-  await requireAdmin();
+  const session = await requirePropertyOwner();
   const lastBill = await prisma.bill.findFirst({
-    where: { renterId },
+    where: {
+      renterId,
+      renter: { propertyOwnerId: session.user.propertyOwnerId ?? "__none__" },
+    },
     orderBy: [{ year: "desc" }, { month: "desc" }],
     select: { currentReading: true },
   });
@@ -284,6 +357,8 @@ export async function getYearlyBillSummary(renterId?: string) {
   const where: Prisma.BillWhereInput = {};
   if (session.user.role === "RENTER" && session.user.renterId) {
     where.renterId = session.user.renterId;
+  } else if (session.user.role === "PROPERTY_OWNER") {
+    where.renter = { is: { propertyOwnerId: session.user.propertyOwnerId ?? "__none__" } };
   } else if (renterId) {
     where.renterId = renterId;
   }
@@ -316,6 +391,8 @@ export async function getMonthlyHistory(year: number, renterId?: string) {
   const where: Prisma.BillWhereInput = { year };
   if (session.user.role === "RENTER" && session.user.renterId) {
     where.renterId = session.user.renterId;
+  } else if (session.user.role === "PROPERTY_OWNER") {
+    where.renter = { is: { propertyOwnerId: session.user.propertyOwnerId ?? "__none__" } };
   } else if (renterId) {
     where.renterId = renterId;
   }
@@ -336,4 +413,131 @@ export async function getMonthlyHistory(year: number, renterId?: string) {
     const bill = bills.find((b) => b.month === month);
     return { month, monthName: name, bill };
   });
+}
+
+export async function getRenterBillsForModal(filters: {
+  renterId: string;
+  year?: number;
+  month?: number;
+  status?: BillStatus;
+}) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Unauthorized");
+
+  const { renterId, year, month, status } = filters;
+  if (!renterId) throw new Error("Renter is required");
+
+  const renter = await prisma.renter.findUnique({
+    where: { id: renterId },
+    include: { user: { select: { name: true, email: true } } },
+  });
+  if (!renter) throw new Error("Renter not found");
+
+  if (
+    session.user.role === "PROPERTY_OWNER" &&
+    renter.propertyOwnerId !== session.user.propertyOwnerId
+  ) {
+    throw new Error("Unauthorized");
+  }
+
+  if (session.user.role === "RENTER" && session.user.renterId !== renterId) {
+    throw new Error("Unauthorized");
+  }
+
+  const where: Prisma.BillWhereInput = { renterId };
+  if (year) where.year = year;
+  if (month) where.month = month;
+  if (status) where.status = status;
+
+  let bills: Array<{
+    id: string;
+    month: number;
+    year: number;
+    previousReading: number;
+    currentReading: number;
+    units: number;
+    ratePerUnit: number;
+    fixedCharge: number;
+    roomRent: number;
+    totalAmount: number;
+    status: BillStatus;
+    createdAt: Date;
+  }> = [];
+
+  try {
+    const rows = await prisma.bill.findMany({
+      where,
+      orderBy: [{ year: "desc" }, { month: "desc" }],
+      select: {
+        id: true,
+        month: true,
+        year: true,
+        previousReading: true,
+        currentReading: true,
+        units: true,
+        ratePerUnit: true,
+        fixedCharge: true,
+        totalAmount: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+    bills = rows.map((bill) => ({ ...bill, roomRent: 0 }));
+  } catch {
+    // Backward-compatible fallback when roomRent is not yet available in runtime schema/client.
+    const legacyBills = await prisma.bill.findMany({
+      where,
+      orderBy: [{ year: "desc" }, { month: "desc" }],
+      select: {
+        id: true,
+        month: true,
+        year: true,
+        previousReading: true,
+        currentReading: true,
+        units: true,
+        ratePerUnit: true,
+        fixedCharge: true,
+        totalAmount: true,
+        status: true,
+        createdAt: true,
+      } as Prisma.BillSelect,
+    });
+    bills = legacyBills.map((bill) => ({ ...bill, roomRent: 0 })) as typeof bills;
+  }
+
+  return {
+    renter: {
+      id: renter.id,
+      name: renter.user.name,
+      email: renter.user.email,
+      meterNumber: renter.meterNumber,
+      roomNumber: renter.roomNumber,
+    },
+    bills,
+  };
+}
+
+export async function updateBillStatus(billId: string, status: BillStatus) {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "PROPERTY_OWNER") {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const bill = await prisma.bill.findUnique({
+    where: { id: billId },
+    include: { renter: { select: { propertyOwnerId: true } } },
+  });
+
+  if (!bill || bill.renter.propertyOwnerId !== session.user.propertyOwnerId) {
+    return { success: false, error: "Bill not found" };
+  }
+
+  await prisma.bill.update({
+    where: { id: billId },
+    data: { status },
+  });
+
+  revalidatePath("/admin/bills");
+  revalidatePath("/renter/bills");
+  return { success: true };
 }

@@ -41,7 +41,7 @@ export function DashboardClient({ stats, bills }: DashboardClientProps) {
         />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>{t("admin.dashboard.monthlyRevenue")}</CardTitle>
@@ -52,7 +52,7 @@ export function DashboardClient({ stats, bills }: DashboardClientProps) {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>{t("admin.dashboard.quickStats")}</CardTitle>
             <CheckCircle className="h-5 w-5 text-green-500" />
           </CardHeader>

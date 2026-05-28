@@ -8,6 +8,7 @@ declare module "next-auth" {
   interface User {
     role: Role;
     renterId?: string | null;
+    propertyOwnerId?: string | null;
   }
 
   interface Session {
@@ -17,6 +18,7 @@ declare module "next-auth" {
       email: string;
       role: Role;
       renterId?: string | null;
+      propertyOwnerId?: string | null;
     };
   }
 }
@@ -26,6 +28,7 @@ declare module "@auth/core/jwt" {
     id: string;
     role: Role;
     renterId?: string | null;
+    propertyOwnerId?: string | null;
   }
 }
 
@@ -47,7 +50,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email },
-          include: { renter: true },
+          include: { renter: true, propertyOwner: true },
         });
 
         if (!user) return null;
@@ -61,6 +64,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.email,
           role: user.role,
           renterId: user.renter?.id ?? null,
+          propertyOwnerId: user.propertyOwner?.id ?? null,
         };
       },
     }),
@@ -71,6 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id!;
         token.role = user.role;
         token.renterId = user.renterId;
+        token.propertyOwnerId = user.propertyOwnerId;
       }
       return token;
     },
@@ -79,6 +84,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.renterId = token.renterId as string | null | undefined;
+        session.user.propertyOwnerId = token.propertyOwnerId as string | null | undefined;
       }
       return session;
     },

@@ -24,7 +24,7 @@ import { useTranslations } from "@/components/providers/locale-provider";
 import { cn } from "@/lib/utils";
 
 interface DashboardSidebarProps {
-  role: "ADMIN" | "RENTER";
+  role: "ADMIN" | "PROPERTY_OWNER" | "RENTER";
 }
 
 export function DashboardSidebar({ role }: DashboardSidebarProps) {
@@ -35,9 +35,13 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
 
   const adminLinks = [
     { href: "/admin/dashboard", label: t("admin.nav.dashboard"), icon: LayoutDashboard },
+    { href: "/admin/reports", label: t("admin.nav.reports"), icon: BarChart3 },
+    { href: "/admin/property-owners", label: "Property Owners", icon: Users },
+  ];
+
+  const propertyOwnerLinks = [
     { href: "/admin/renters", label: t("admin.nav.renters"), icon: Users },
     { href: "/admin/bills", label: t("admin.nav.bills"), icon: FileText },
-    { href: "/admin/reports", label: t("admin.nav.reports"), icon: BarChart3 },
     { href: "/admin/settings", label: t("admin.nav.settings"), icon: Settings },
   ];
 
@@ -46,7 +50,8 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
     { href: "/renter/profile", label: t("renter.nav.profile"), icon: User },
   ];
 
-  const links = role === "ADMIN" ? adminLinks : renterLinks;
+  const links =
+    role === "ADMIN" ? adminLinks : role === "PROPERTY_OWNER" ? propertyOwnerLinks : renterLinks;
 
   const SidebarContent = () => (
     <>
@@ -114,7 +119,7 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
 
   return (
     <>
-      <div className="flex h-14 items-center justify-between border-b px-4 lg:hidden">
+      <div className="flex h-14 items-center justify-between border-b px-4 xl:hidden">
         <div className="flex items-center gap-2 font-bold text-primary">
           <Zap className="h-5 w-5" />
           {t("common.appName")}
@@ -126,15 +131,15 @@ export function DashboardSidebar({ role }: DashboardSidebarProps) {
 
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 xl:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-background transition-transform lg:static lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-background transition-transform xl:static xl:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full xl:translate-x-0"
         )}
       >
         <SidebarContent />

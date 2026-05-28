@@ -24,6 +24,7 @@ import type { BillWithRenter } from "@/types";
 interface BillsTableProps {
   bills: BillWithRenter[];
   onEdit?: (bill: BillWithRenter) => void;
+  onRenterClick?: (bill: BillWithRenter) => void;
   showRenter?: boolean;
   readonly?: boolean;
 }
@@ -31,6 +32,7 @@ interface BillsTableProps {
 export function BillsTable({
   bills,
   onEdit,
+  onRenterClick,
   showRenter = true,
   readonly = false,
 }: BillsTableProps) {
@@ -60,8 +62,69 @@ export function BillsTable({
     );
   }
 
+  if (showRenter && !readonly) {
+    const renterGroups = Array.from(
+      bills.reduce((map, bill) => {
+        const key = bill.renterId;
+        const existing = map.get(key);
+
+        const currentPeriodKey = bill.year * 100 + bill.month;
+        const existingPeriodKey = existing
+          ? existing.latestBill.year * 100 + existing.latestBill.month
+          : -1;
+
+        const latestBill = currentPeriodKey >= existingPeriodKey ? bill : existing?.latestBill ?? bill;
+        map.set(key, {
+          renterId: bill.renterId,
+          name: bill.renter.user.name,
+          email: bill.renter.user.email,
+          meterNumber: bill.renter.meterNumber,
+          roomNumber: bill.renter.roomNumber,
+          latestBill,
+        });
+        return map;
+      }, new Map<string, {
+        renterId: string;
+        name: string;
+        email: string;
+        meterNumber: string;
+        roomNumber: string;
+        latestBill: BillWithRenter;
+      }>())
+      .values()
+    ).sort((a, b) => a.name.localeCompare(b.name));
+
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {renterGroups.map((group) => (
+          <div key={group.renterId} className="rounded-lg border p-4">
+            <div className="mb-3">
+              <p className="font-semibold">{group.name}</p>
+              <p className="text-xs text-muted-foreground">{group.email}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {group.meterNumber}
+                {group.roomNumber ? ` • Room ${group.roomNumber}` : ""}
+              </p>
+            </div>
+
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <Button
+                size="sm"
+                onClick={() => onRenterClick?.(group.latestBill)}
+                disabled={!onRenterClick}
+              >
+                View Bills
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border">
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -79,9 +142,15 @@ export function BillsTable({
               {showRenter && (
                 <TableCell>
                   <div>
-                    <p className="font-medium">{bill.renter.user.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => onRenterClick?.(bill)}
+                      className="font-medium text-left hover:underline"
+                    >
+                      {bill.renter.user.name}
+                    </button>
                     <p className="text-xs text-muted-foreground">
-                      {bill.renter.meterNumber}
+                      {bill.renter.meterNumber} {bill.renter.roomNumber ? `• Room ${bill.renter.roomNumber}` : ""}
                     </p>
                   </div>
                 </TableCell>
@@ -138,6 +207,7 @@ export function BillsTable({
           ))}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

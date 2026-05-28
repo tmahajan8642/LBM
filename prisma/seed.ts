@@ -10,6 +10,7 @@ async function main() {
   console.log("Seeding database...");
 
   const adminPassword = await bcrypt.hash("admin123", 12);
+  const ownerPassword = await bcrypt.hash("owner123", 12);
   const renterPassword = await bcrypt.hash("renter123", 12);
 
   const admin = await prisma.user.upsert({
@@ -23,6 +24,19 @@ async function main() {
     },
   });
 
+  const owner = await prisma.user.upsert({
+    where: { email: "owner@lightbill.com" },
+    update: {},
+    create: {
+      name: "Aarav Property",
+      email: "owner@lightbill.com",
+      password: ownerPassword,
+      role: "PROPERTY_OWNER",
+      propertyOwner: { create: {} },
+    },
+    include: { propertyOwner: true },
+  });
+
   const renterUser1 = await prisma.user.upsert({
     where: { email: "john@example.com" },
     update: {},
@@ -34,8 +48,10 @@ async function main() {
       renter: {
         create: {
           meterNumber: "MTR-001",
+          roomNumber: "101",
           address: "123 Main Street, Apartment 4B, Mumbai",
           mobile: "9876543210",
+          propertyOwnerId: owner.propertyOwner?.id,
         },
       },
     },
@@ -53,8 +69,10 @@ async function main() {
       renter: {
         create: {
           meterNumber: "MTR-002",
+          roomNumber: "102",
           address: "456 Oak Avenue, Unit 12, Delhi",
           mobile: "9876543211",
+          propertyOwnerId: owner.propertyOwner?.id,
         },
       },
     },
@@ -82,7 +100,8 @@ async function main() {
       const units = currentReading - previousReading;
       const ratePerUnit = 8.5;
       const fixedCharge = 150;
-      const totalAmount = units * ratePerUnit + fixedCharge;
+      const roomRent = 2500;
+      const totalAmount = units * ratePerUnit + fixedCharge + roomRent;
 
       await prisma.bill.upsert({
         where: {
@@ -102,6 +121,7 @@ async function main() {
           units,
           ratePerUnit,
           fixedCharge,
+          roomRent,
           totalAmount,
           status: i === 1 ? "PENDING" : i === 2 ? "OVERDUE" : "PAID",
         },
@@ -114,6 +134,7 @@ async function main() {
   console.log("Seed completed!");
   console.log("\n--- Demo Credentials ---");
   console.log("Admin:  admin@lightbill.com / admin123");
+  console.log("Owner:  owner@lightbill.com / owner123");
   console.log("Renter: john@example.com / renter123");
   console.log("Renter: jane@example.com / renter123");
   console.log(`Admin ID: ${admin.id}`);

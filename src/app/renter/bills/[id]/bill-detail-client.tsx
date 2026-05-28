@@ -92,6 +92,10 @@ export function BillDetailClient({ bill }: { bill: BillWithRenter }) {
               </span>
               <span className="font-medium">{formatCurrency(bill.fixedCharge)}</span>
             </div>
+            <div className="flex justify-between rounded-lg bg-muted p-3">
+              <span className="text-muted-foreground">Room Rent</span>
+              <span className="font-medium">{formatCurrency(bill.roomRent ?? 0)}</span>
+            </div>
             <div className="flex justify-between rounded-lg bg-primary/10 p-3">
               <span className="font-medium">{t("renter.billDetail.totalAmount")}</span>
               <span className="text-xl font-bold text-primary">
@@ -111,6 +115,10 @@ export function BillDetailClient({ bill }: { bill: BillWithRenter }) {
                 {t("renter.billDetail.meterNumber")}
               </p>
               <p className="font-medium">{bill.renter.meterNumber}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Room Number</p>
+              <p className="font-medium">{bill.renter.roomNumber || "-"}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t("admin.renters.address")}</p>

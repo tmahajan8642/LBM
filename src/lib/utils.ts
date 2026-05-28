@@ -44,10 +44,11 @@ export function calculateBillAmount(
   previousReading: number,
   currentReading: number,
   ratePerUnit: number,
-  fixedCharge: number
+  fixedCharge: number,
+  roomRent = 0
 ) {
   const units = Math.max(0, currentReading - previousReading);
-  const totalAmount = units * ratePerUnit + fixedCharge;
+  const totalAmount = units * ratePerUnit + fixedCharge + roomRent;
   return { units, totalAmount };
 }
 

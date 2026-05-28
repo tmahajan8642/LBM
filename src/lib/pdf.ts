@@ -42,6 +42,7 @@ export function generateBillPDF(bill: BillWithRenter): jsPDF {
       ["Units Consumed", `${bill.units} units`],
       ["Rate per Unit", formatCurrency(bill.ratePerUnit)],
       ["Fixed Charge", formatCurrency(bill.fixedCharge)],
+      ["Room Rent", formatCurrency(bill.roomRent ?? 0)],
       ["Total Amount", formatCurrency(bill.totalAmount)],
     ],
     theme: "striped",
@@ -55,7 +56,7 @@ export function generateBillPDF(bill: BillWithRenter): jsPDF {
   doc.setFontSize(9);
   doc.setTextColor(100, 100, 100);
   doc.text(
-    "Formula: Units = Current Reading - Previous Reading | Amount = (Units × Rate) + Fixed Charge",
+    "Formula: Units = Current Reading - Previous Reading | Amount = (Units x Rate) + Fixed Charge + Room Rent",
     20,
     finalY + 15
   );

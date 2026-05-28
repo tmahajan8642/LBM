@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   ADMIN
+  PROPERTY_OWNER
   RENTER
 }
 
@@ -27,19 +28,34 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   renter    Renter?
+  propertyOwner PropertyOwner?
 
   @@map("users")
+}
+
+model PropertyOwner {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  renters   Renter[]
+
+  @@map("property_owners")
 }
 
 model Renter {
   id          String   @id @default(cuid())
   userId      String   @unique @map("user_id")
   meterNumber String   @map("meter_number")
+  roomNumber  String   @default("") @map("room_number")
   address     String
   mobile      String
+  propertyOwnerId String? @map("property_owner_id")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyOwner PropertyOwner? @relation(fields: [propertyOwnerId], references: [id], onDelete: SetNull)
   bills       Bill[]
 
   @@map("renters")
@@ -55,6 +71,7 @@ model Bill {
   units            Float
   ratePerUnit      Float      @map("rate_per_unit")
   fixedCharge      Float      @map("fixed_charge")
+  roomRent         Float      @default(0) @map("room_rent")
   totalAmount      Float      @map("total_amount")
   status           BillStatus @default(PENDING)
   createdAt        DateTime   @default(now()) @map("created_at")

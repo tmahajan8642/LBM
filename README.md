@@ -57,7 +57,7 @@ To add more languages, create `src/i18n/messages/<code>.json` (copy `en.json`) a
 1. **Install dependencies**
 
 ```bash
-cd zxp
+cd LBM
 npm install
 ```
 
@@ -114,7 +114,7 @@ Amount = (Units × Rate Per Unit) + Fixed Charge
 ## Project Structure
 
 ```
-zxp/
+LBM/
 ├── prisma/
 │   ├── schema.prisma    # Database schema
 │   └── seed.ts          # Sample data
